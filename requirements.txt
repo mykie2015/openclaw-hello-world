@@ -1,0 +1,19 @@
+# OpenClaw Hello World Demo - Dependencies
+
+## Core Dependencies
+python>=3.8
+
+## For Approach 1 (CLI) - Optional
+pyyaml>=6.0  # For YAML output support
+
+## For Approach 2 (API)
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.0.0
+
+## Development & Testing
+pytest>=7.4.0
+httpx>=0.25.0  # For API testing
+black>=23.0.0  # Code formatting
+isort>=5.12.0  # Import sorting
+mypy>=1.7.0    # Type checking

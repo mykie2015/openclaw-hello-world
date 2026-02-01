@@ -1,0 +1,69 @@
+[project]
+name = "openclaw-hello-world"
+version = "1.0.0"
+description = "OpenClaw demo: 2 ways to implement Hello World"
+authors = [
+    {name = "OpenClaw", email = "hello@openclaw.ai"},
+    {name = "Mykie", email = "mykie2015@github.com"}
+]
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Version Control :: Git",
+]
+
+dependencies = [
+    # CLI approach works with standard library
+    # API approach requires fastapi, uvicorn, pydantic
+]
+
+[project.optional-dependencies]
+cli = ["pyyaml>=6.0"]
+api = ["fastapi>=0.104.0", "uvicorn[standard]>=0.24.0", "pydantic>=2.0.0"]
+dev = [
+    "pytest>=7.4.0",
+    "httpx>=0.25.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.7.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/mykie2015/openclaw-hello-world"
+Repository = "https://github.com/mykie2015/openclaw-hello-world"
+Documentation = "https://github.com/mykie2015/openclaw-hello-world#readme"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
