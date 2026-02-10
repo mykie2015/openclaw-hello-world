@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPENCLAW</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#0a0a0f;font-family:"Courier New",monospace}
+canvas{display:block;position:absolute;top:0;left:0;width:100%;height:100%}
+#overlay{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;z-index:2}
+#subtitle{color:#00e5ff;font-size:clamp(14px,2.5vw,24px);letter-spacing:0.3em;opacity:0;transition:opacity 2s ease;margin-top:20px;text-shadow:0 0 10px #00e5ff,0 0 20px #00e5ff,0 0 40px #006080}
+#subtitle.visible{opacity:1}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="overlay">
+<div id="subtitle">Self-improving since 2026</div>
+</div>
+<script>
+(function(){
+var canvas=document.getElementById("canvas");
+var ctx=canvas.getContext("2d");
+var W,H,particles=[],starField=[],textPixels=[];
+var assembleProgress=0,assembled=false,glowPhase=0;
+var mouse={x:-1000,y:-1000};
+
+function resize(){
+  W=canvas.width=window.innerWidth;
+  H=canvas.height=window.innerHeight;
+  initStars();
+  initTextPixels();
+  initParticles();
+  assembleProgress=0;
+  assembled=false;
+  document.getElementById("subtitle").classList.remove("visible");
+}
+
+function initStars(){
+  starField=[];
+  var count=Math.floor(W*H/2000);
+  for(var i=0;i<count;i++){
+    starField.push({
+      x:Math.random()*W,
+      y:Math.random()*H,
+      r:Math.random()*1.5+0.3,
+      speed:Math.random()*0.3+0.05,
+      brightness:Math.random(),
+      twinkleSpeed:Math.random()*0.02+0.005
+    });
+  }
+}
+
+function initTextPixels(){
+  textPixels=[];
+  var fontSize=Math.min(Math.floor(W/7),120);
+  if(fontSize<30)fontSize=30;
+  var offCanvas=document.createElement("canvas");
+  offCanvas.width=W;offCanvas.height=H;
+  var offCtx=offCanvas.getContext("2d");
+  offCtx.fillStyle="#fff";
+  offCtx.font="bold "+fontSize+"px Courier New, monospace";
+  offCtx.textAlign="center";
+  offCtx.textBaseline="middle";
+  offCtx.fillText("OPENCLAW",W/2,H/2);
+  var imageData=offCtx.getImageData(0,0,W,H);
+  var gap=Math.max(3,Math.floor(fontSize/18));
+  for(var y=0;y<H;y+=gap){
+    for(var x=0;x<W;x+=gap){
+      var idx=(y*W+x)*4;
+      if(imageData.data[idx+3]>128){
+        textPixels.push({x:x,y:y});
+      }
+    }
+  }
+}
+
+function initParticles(){
+  particles=[];
+  var maxP=Math.min(textPixels.length,3000);
+  var step=Math.max(1,Math.floor(textPixels.length/maxP));
+  for(var i=0;i<textPixels.length;i+=step){
+    var tp=textPixels[i];
+    var angle=Math.random()*Math.PI*2;
+    var dist=Math.random()*Math.max(W,H)*0.8+200;
+    particles.push({
+      x:W/2+Math.cos(angle)*dist,
+      y:H/2+Math.sin(angle)*dist,
+      tx:tp.x,
+      ty:tp.y,
+      ox:W/2+Math.cos(angle)*dist,
+      oy:H/2+Math.sin(angle)*dist,
+      size:Math.random()*2+1,
+      hue:Math.random()*60+170,
+      speed:Math.random()*0.5+0.5,
+      delay:Math.random()*0.3
+    });
+  }
+}
+
+function drawStars(t){
+  for(var i=0;i<starField.length;i++){
+    var s=starField[i];
+    s.brightness+=s.twinkleSpeed;
+    var alpha=(Math.sin(s.brightness)+1)/2*0.8+0.1;
+    s.y+=s.speed;
+    if(s.y>H){s.y=0;s.x=Math.random()*W;}
+    ctx.beginPath();
+    ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.fillStyle="rgba(200,220,255,"+alpha+")";
+    ctx.fill();
+  }
+}
+
+function easeInOutCubic(t){
+  return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+}
+
+function drawParticles(t){
+  for(var i=0;i<particles.length;i++){
+    var p=particles[i];
+    var progress=Math.max(0,Math.min(1,(assembleProgress-p.delay)/0.7));
+    var ease=easeInOutCubic(progress);
+    p.x=p.ox+(p.tx-p.ox)*ease;
+    p.y=p.oy+(p.ty-p.oy)*ease;
+
+    var dx=mouse.x-p.x,dy=mouse.y-p.y;
+    var dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<100&&assembled){
+      var force=(100-dist)/100*8;
+      p.x-=dx/dist*force;
+      p.y-=dy/dist*force;
+    }
+
+    var glow=assembled?(Math.sin(glowPhase+i*0.01)+1)/2*0.5+0.5:0.7;
+    var alpha=progress<0.1?progress*10:glow;
+    var hue=p.hue+(assembled?Math.sin(glowPhase*0.5)*20:0);
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.size*(assembled?1+Math.sin(glowPhase+i*0.05)*0.3:1),0,Math.PI*2);
+    ctx.fillStyle="hsla("+hue+",100%,70%,"+alpha+")";
+    ctx.fill();
+    if(assembled&&glow>0.7){
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.size*3,0,Math.PI*2);
+      ctx.fillStyle="hsla("+hue+",100%,70%,"+alpha*0.15+")";
+      ctx.fill();
+    }
+  }
+}
+
+function drawNeonText(){
+  if(!assembled)return;
+  var pulse=(Math.sin(glowPhase*0.8)+1)/2;
+  var fontSize=Math.min(Math.floor(W/7),120);
+  if(fontSize<30)fontSize=30;
+  ctx.save();
+  ctx.font="bold "+fontSize+"px Courier New, monospace";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.shadowColor="rgba(0,229,255,"+(0.3+pulse*0.4)+")";
+  ctx.shadowBlur=40+pulse*30;
+  ctx.fillStyle="rgba(0,229,255,"+(0.08+pulse*0.06)+")";
+  ctx.fillText("OPENCLAW",W/2,H/2);
+  ctx.shadowBlur=80+pulse*40;
+  ctx.fillText("OPENCLAW",W/2,H/2);
+  ctx.restore();
+}
+
+function drawScanlines(){
+  ctx.fillStyle="rgba(0,0,0,0.03)";
+  for(var y=0;y<H;y+=4){
+    ctx.fillRect(0,y,W,2);
+  }
+}
+
+var lastTime=0;
+function animate(timestamp){
+  var dt=Math.min((timestamp-lastTime)/1000,0.05);
+  lastTime=timestamp;
+
+  ctx.fillStyle="rgba(10,10,15,0.85)";
+  ctx.fillRect(0,0,W,H);
+
+  drawStars(timestamp);
+
+  if(!assembled){
+    assembleProgress+=dt*0.35;
+    if(assembleProgress>=1.3){
+      assembled=true;
+      setTimeout(function(){
+        document.getElementById("subtitle").classList.add("visible");
+      },500);
+    }
+  }
+
+  glowPhase+=dt*2;
+  drawParticles(timestamp);
+  drawNeonText();
+  drawScanlines();
+
+  requestAnimationFrame(animate);
+}
+
+window.addEventListener("resize",resize);
+canvas.addEventListener("mousemove",function(e){mouse.x=e.clientX;mouse.y=e.clientY;});
+canvas.addEventListener("touchmove",function(e){
+  e.preventDefault();
+  mouse.x=e.touches[0].clientX;
+  mouse.y=e.touches[0].clientY;
+},{passive:false});
+canvas.addEventListener("mouseleave",function(){mouse.x=-1000;mouse.y=-1000;});
+
+resize();
+requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>
